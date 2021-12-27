@@ -55,6 +55,7 @@ import java.util.HashMap;
 import java.util.Set;
 
 import javax.annotation.Nullable;
+import android.os.Bundle;
 
 /**
  * {@link NativeModule} that allows JS to interact with the photos and videos on the device (i.e.
@@ -378,19 +379,38 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
       ContentResolver resolver = mContext.getContentResolver();
 
       try {
-        // set LIMIT to first + 1 so that we know how to populate page_info
-        String limit = "limit=" + (mFirst + 1);
+        Cursor media;
 
-        if (!TextUtils.isEmpty(mAfter)) {
-          limit = "limit=" + mAfter + "," + (mFirst + 1);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+          Bundle bundle = new Bundle();
+          bundle.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection.toString());
+          bundle.putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                  selectionArgs.toArray(new String[selectionArgs.size()]));
+          bundle.putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS,
+                  new String[]{ Images.Media.DATE_ADDED, Images.Media.DATE_MODIFIED });
+          bundle.putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING);
+          bundle.putInt(ContentResolver.QUERY_ARG_LIMIT, mFirst + 1);
+          if (!TextUtils.isEmpty(mAfter)) {
+            bundle.putInt(ContentResolver.QUERY_ARG_OFFSET, Integer.parseInt(mAfter));
+          }
+          media = resolver.query(
+                  MediaStore.Files.getContentUri("external"),
+                  PROJECTION,
+                  bundle,
+                  null);
+        } else {
+          // set LIMIT to first + 1 so that we know how to populate page_info
+          String limit = "limit=" + (mFirst + 1);
+          if (!TextUtils.isEmpty(mAfter)) {
+            limit = "limit=" + mAfter + "," + (mFirst + 1);
+          }
+          media = resolver.query(
+                  MediaStore.Files.getContentUri("external").buildUpon().encodedQuery(limit).build(),
+                  PROJECTION,
+                  selection.toString(),
+                  selectionArgs.toArray(new String[selectionArgs.size()]),
+                  Images.Media.DATE_ADDED + " DESC, " + Images.Media.DATE_MODIFIED + " DESC");
         }
-
-        Cursor media = resolver.query(
-            MediaStore.Files.getContentUri("external").buildUpon().encodedQuery(limit).build(),
-            PROJECTION,
-            selection.toString(),
-            selectionArgs.toArray(new String[selectionArgs.size()]),
-            Images.Media.DATE_ADDED + " DESC, " + Images.Media.DATE_MODIFIED + " DESC");
         if (media == null) {
           mPromise.reject(ERROR_UNABLE_TO_LOAD, "Could not get media");
         } else {
