@@ -377,18 +377,16 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
 
       WritableMap response = new WritableNativeMap();
       ContentResolver resolver = mContext.getContentResolver();
+      String selectionString = selection.toString();
 
       try {
         Cursor media;
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
           Bundle bundle = new Bundle();
-          bundle.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection.toString());
+          bundle.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selectionString);
           bundle.putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
                   selectionArgs.toArray(new String[selectionArgs.size()]));
-          bundle.putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS,
-                  new String[]{ Images.Media.DATE_ADDED, Images.Media.DATE_MODIFIED });
-          bundle.putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING);
+          bundle.putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, Images.Media.DATE_ADDED + " DESC, " + Images.Media.DATE_MODIFIED + " DESC");
           bundle.putInt(ContentResolver.QUERY_ARG_LIMIT, mFirst + 1);
           if (!TextUtils.isEmpty(mAfter)) {
             bundle.putInt(ContentResolver.QUERY_ARG_OFFSET, Integer.parseInt(mAfter));
